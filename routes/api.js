@@ -7,8 +7,8 @@ const bcrypt = require('bcrypt');
 var connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'sinergialabs',
-    database: 'nrm'
+    password: 'toor',
+    database: 'invoice'
 });
 
 
@@ -30,38 +30,26 @@ router.post('/register', function (req, res, next) {
 
     // connection.connect()
 
+    bcrypt.hash(password, 10, function (err, hash) {
     var queryUser = squel.insert()
         .into("user")
         .set("name", name)
         .set("email", email)
         .set("phone", phone)
+        .set("username", username)
+        .set("password", hash)
         .set("address", address)
         .toString();
 
+        connection.query(queryUser, function (err, rows, fields) {
+            if (err)  res.send({status:'invalid'});
 
-    connection.query(queryUser, function (err, rows, fields) {
-        if (err) throw err
+            console.log(rows);
 
-        console.log(rows);
-        bcrypt.hash(password, 10, function (err, hash) {
             // Store hash in database
-            var queryLogin = squel.insert()
-                .into("login")
-                .set("userid", rows.insertId)
-                .set("username", username)
-                .set("password", hash)
-                .set("id", phone)
-                .toString();
+        })
 
-            connection.query(queryLogin, function (err, rows, fields) {
-                if (err) throw err
-
-                console.log('login table insert successful');
-                res.send('registration successful');
-                // connection.end()
-            })
-        });
-    })
+    });
 
 });
 
@@ -71,16 +59,16 @@ router.post('/login', function (req, res, next) {
     var username = datas['username'];
     var password = datas['password'];
 
-    var queryLogin = "select * from login where username='" + username + "'";
+    var queryLogin = "select * from user where username='" + username + "'";
 
 
     connection.query(queryLogin, function (err, rows, fields) {
-        if (err) throw res.send({status:'invalid'});
+        if (err)  res.send({status:'invalid'});
         if(rows.length > 0) {
             // console.log(rows[0].password);
             bcrypt.compare(password, rows[0].password, function (err, ress) {
                 if (ress) {
-                    res.send({status:'success',userid:rows[0].userid});
+                    res.send({status:'success',userid:rows[0].id,vendername:rows[0].name});
                 } else {
                     res.send({status:'invalid'});
                     // Passwords don't match
@@ -96,44 +84,48 @@ router.post('/login', function (req, res, next) {
 
 });
 
-/* add dashboard */
-router.post('/dashboard', function (req, res, next) {
+/* add purchase */
+router.post('/purchase', function (req, res, next) {
     var datas = req.body;
     var userid = datas['userid'];
-    var name = datas['name'];
-    var username = datas['username'];
-    var env = datas['env'];
-    var dashboard = datas['dashboard'];
-
+    var vendername = datas['vendername'];
+    var trn_no = datas['trn_no'];
+    var invoice_date = datas['date_invoice'];
+    var amount = datas['amount'];
+    var vat = datas['vat'];
+    var total = datas['total'];
+    var invoice_number = datas['invoice_number'];
 
     var queryDashboard = squel.insert()
-        .into("dashboard")
-        .set("userid", userid)
-        .set("username", username)
-        .set("name", name)
-        .set("env", env)
-        .set("dashboard", dashboard)
+        .into("purchase")
+        .set("vendername", vendername)
+        .set("trn_no", trn_no)
+        .set("date_invoice", invoice_date)
+        .set("amount", amount)
+        .set("vat", vat)
+        .set("total", total)
+        .set("invoice_number", invoice_number)
         .toString();
 
     connection.query(queryDashboard, function (err, rows, fields) {
-        if (err) throw err
+        if (err) res.send({status:'invalid'});
 
-        console.log('dashboard insert successful');
-        res.send('dashboard entry successful');
+        console.log('purchase insert successful');
+        res.send('purchase entry successful');
         // connection.end()
     })
 
 
 });
 
-/* get all dashboard */
-router.get('/dashboard', function (req, res, next) {
-    var queryDashboard = "select * from dashboard";
+/* get all purchase */
+router.get('/purchase', function (req, res, next) {
+    var queryDashboard = "select * from purchase";
 
     connection.query(queryDashboard, function (err, rows, fields) {
         if (err) throw err
 
-        console.log('dashboard get successful');
+        console.log('purchase get successful');
         res.send(rows);
         // connection.end()
     })
@@ -142,7 +134,7 @@ router.get('/dashboard', function (req, res, next) {
 
 
 /* get dashboard with id*/
-router.get('/dashboard/:userid/:env', function (req, res, next) {
+router.get('/purchase/:userid/:env', function (req, res, next) {
     // res.send('respond with dashboard page');
     var userid = req.params.userid;
     var env = req.params.env;
